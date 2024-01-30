@@ -1,77 +1,83 @@
 package main
 
 import (
-    "fmt"
-    "math"
+	"fmt"
 )
 
-// HSLtoRGB converts HSL to RGB
-func HSLtoRGB(h, s, l float64) (float64, float64, float64) {
- 
-	h = math.Mod(h, 360)
-    s = math.Max(0, math.Min(100, s)) / 100.0
-    l = math.Max(0, math.Min(100, l)) / 100.0
-
-    c := (1 - math.Abs(2*l-1)) * s
-    x := c * (1 - math.Abs(math.Mod(h/60, 2)-1))
-    m := l - c/2.0
-
-    r, g, b := 0.0, 0.0, 0.0
-
-    if h >= 0 && h < 60 {
-        r, g, b = c, x, 0
-    } else if h >= 60 && h < 120 {
-        r, g, b = x, c, 0
-    } else if h >= 120 && h < 180 {
-        r, g, b = 0, c, x
-    } else if h >= 180 && h < 240 {
-        r, g, b = 0, x, c
-    } else if h >= 240 && h < 300 {
-        r, g, b = x, 0, c
-    } else if h >= 300 && h < 360 {
-        r, g, b = c, 0, x
-    }
-
-    r = (r + m) * 255
-    g = (g + m) * 255
-    b = (b + m) * 255
-
-    return r, g, b
+// HSL represents the Hue, Saturation, and Lightness values of a color
+type HSL struct {
+	Hue        int
+	Saturation int
+	Lightness  int
 }
 
-// FormatHSLString formats HSL string
-func FormatHSLString(h, s, l float64) string {
-    return fmt.Sprintf("hsl(%.0f, %.0f%%, %.0f%%)", h, s, l)
+// GenerateSimilarColors generates a map of HSL colors similar to the provided color
+func GenerateSimilarColors(color HSL, numColors int, hueRange, saturationBase, lightnessBase int) map[int]string {
+	const maxColors = 11 // Maximum number of colors allowed
+    const defaultSaturation = 0
+    const defaultLightness = 0
+	if numColors > maxColors {
+		numColors = maxColors
+	}
+	similarColors := make(map[int]string)
+
+	// Fibonacci sequence generation
+	fib := fibonacci(numColors)
+
+	// Generate similar colors by adjusting the HSL components within the specified ranges
+	for i := 0; i < numColors; i++ {
+		key := i * 100
+		if key == 0 {
+			key = 50
+		} else if key == 1000 {
+			key = 950
+		}
+
+		// Adjusting saturation and lightness based on Fibonacci sequence
+		saturation := saturationBase * fib[i]
+		lightness := lightnessBase * fib[i]
+
+		newHue := clamp(color.Hue+(i-numColors/2)*hueRange, 0, 360)
+		newSaturation := clamp(color.Saturation+saturation, 0, 100)
+		newLightness := clamp(color.Lightness+lightness, 0, 100)
+
+		similarColors[key] = fmt.Sprintf("hsl(%d, %d%%, %d%%)", newHue, newSaturation, newLightness)
+	}
+
+	return similarColors
 }
 
-// GenerateShades generates HSL shades
-func GenerateShades(h, s, l float64) map[int]string {
-    // Initialize a map called shades using make
-    shades := make(map[int]string)
+// Fibonacci sequence generator
+func fibonacci(n int) []int {
+	fib := make([]int, n)
+	fib[0], fib[1] = 1, 1
+	for i := 2; i < n; i++ {
+		fib[i] = fib[i-1] + fib[i-2]
+	}
+	return fib
+}
 
-    // Generate shades for different lightness levels
-    for i := 50; i <= 950; i += 50 {
-        // Adjust the lightness level
-        l += float64(i) / 1000.0
-        // Ensure that the lightness level is within the range [0, 1]
-        if l < 0 {
-            l = 0
-        } else if l > 1 {
-            l = 1
-        }
-        // Format the HSL (Hue, Saturation, Lightness) string and store it in the shades map
-        shades[i] = FormatHSLString(h, s, l*100)
-    }
-    // Return the generated shades map
-    return shades
+// clamp clamps the value between min and max
+func clamp(value, min, max int) int {
+	if value < min {
+		return min
+	} else if value > max {
+		return max
+	}
+	return value
 }
 
 func main() {
-    h := 228.0
-    s := 8.0
-    l := 12.0
-    shades := GenerateShades(h, s, l)
-    for key, value := range shades {
-        fmt.Printf("%d: %s\n", key, value)
-    }
+	// Example usage
+	color := HSL{180, 50, 70}
+	numColors := 11
+	hueRange := 30
+	saturationBase := 10 // Base saturation change
+	lightnessBase := 10  // Base lightness change
+
+	similarColors := GenerateSimilarColors(color, numColors, hueRange, saturationBase, lightnessBase)
+	fmt.Println("Similar Colors:")
+	for key, value := range similarColors {
+		fmt.Printf("%d: \"%s\",\n", key, value)
+	}
 }
